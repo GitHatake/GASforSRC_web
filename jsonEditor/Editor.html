@@ -1,0 +1,892 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SRC JSON編集</title>
+  <?!= include('Stylesheet'); ?>
+  <style>
+    .editor-container {
+      min-height: 100vh;
+      padding: 20px;
+    }
+    
+    .editor-header {
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      padding: 24px;
+      margin-bottom: 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+    
+    .header-title {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    
+    .header-logo {
+      width: 48px;  /* ロゴの幅 */
+      height: 48px; /* ロゴの高さ */
+      
+      /* 画像が48x48のボックス内に歪まず収まるようにします */
+      object-fit: contain;
+
+      /* もしロゴを円形に切り抜きたい場合は、以下の1行を有効にしてください */
+      border-radius: 50%;
+    }
+    
+    .header-text h1 {
+      font-size: 20px;
+      font-weight: bold;
+      color: #333;
+      margin: 0 0 4px 0;
+    }
+    
+    .header-text p {
+      font-size: 14px;
+      color: #666;
+      margin: 0;
+    }
+    
+    .btn-logout {
+      padding: 10px 20px;
+      background: #f5f5f5;
+      color: #333;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+    
+    .btn-logout:hover {
+      background: #e0e0e0;
+    }
+    
+    .editor-content {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    
+    .file-selector {
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      padding: 24px;
+      margin-bottom: 24px;
+    }
+    
+    .file-selector-title {
+      font-size: 18px;
+      font-weight: bold;
+      color: #333;
+      margin-bottom: 16px;
+    }
+    
+    .file-select-group {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    
+    .form-select {
+      flex: 1;
+      min-width: 200px;
+      padding: 12px 16px;
+      border: 2px solid #e0e0e0;
+      border-radius: 8px;
+      font-size: 16px;
+      background: white;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+    
+    .form-select:focus {
+      outline: none;
+      border-color: #00BCD4;
+      box-shadow: 0 0 0 3px rgba(0, 188, 212, 0.1);
+    }
+    
+    .btn-new {
+      padding: 12px 24px;
+      background: linear-gradient(135deg, #00BCD4, #4CAF50);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      white-space: nowrap;
+    }
+    
+    .btn-new:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 188, 212, 0.3);
+    }
+    
+    .editor-form {
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      padding: 32px;
+      display: none;
+    }
+    
+    .editor-form.show {
+      display: block;
+    }
+    
+    .form-title {
+      font-size: 20px;
+      font-weight: bold;
+      color: #333;
+      margin-bottom: 24px;
+      padding-bottom: 16px;
+      border-bottom: 2px solid #f0f0f0;
+    }
+    
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 24px;
+    }
+    
+    .form-group {
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .form-label {
+      font-size: 14px;
+      font-weight: 600;
+      color: #333;
+      margin-bottom: 8px;
+    }
+    
+    .form-label.required::after {
+      content: ' *';
+      color: #f44336;
+    }
+    
+    .form-input,
+    .form-textarea,
+    .form-select {
+      padding: 12px 16px;
+      border: 2px solid #e0e0e0;
+      border-radius: 8px;
+      font-size: 16px;
+      transition: all 0.3s ease;
+      font-family: inherit;
+    }
+    
+    .form-textarea {
+      min-height: 120px;
+      resize: vertical;
+    }
+    
+    .form-input:focus,
+    .form-textarea:focus {
+      outline: none;
+      border-color: #00BCD4;
+      box-shadow: 0 0 0 3px rgba(0, 188, 212, 0.1);
+    }
+    
+    .form-input:read-only {
+      background: #f5f5f5;
+      cursor: not-allowed;
+    }
+    
+    .datetime-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+    
+    .pdf-info {
+      background: #f5f5f5;
+      padding: 16px;
+      border-radius: 8px;
+      margin-top: 8px;
+    }
+    
+    .pdf-info-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+      font-size: 14px;
+    }
+    
+    .pdf-info-item:last-child {
+      margin-bottom: 0;
+    }
+    
+    .pdf-info-label {
+      font-weight: 600;
+      color: #666;
+    }
+    
+    .pdf-info-value {
+      color: #333;
+    }
+    
+    .pdf-link {
+      color: #00BCD4;
+      text-decoration: none;
+      font-weight: 600;
+    }
+    
+    .pdf-link:hover {
+      text-decoration: underline;
+    }
+    
+    .form-actions {
+      display: flex;
+      gap: 12px;
+      margin-top: 32px;
+      padding-top: 24px;
+      border-top: 2px solid #f0f0f0;
+    }
+    
+    .btn-save {
+      flex: 1;
+      padding: 14px;
+      background: linear-gradient(135deg, #00BCD4, #4CAF50);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+    
+    .btn-save:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 188, 212, 0.3);
+    }
+    
+    .btn-save:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+    
+    .btn-cancel {
+      padding: 14px 32px;
+      background: #f5f5f5;
+      color: #333;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+    
+    .btn-cancel:hover {
+      background: #e0e0e0;
+    }
+
+    .btn-delete {
+      padding: 14px 32px;
+      background: #f44336; /* 危険な操作を示す赤色 */
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      margin-left: auto; /* 右端に配置 */
+    }
+    
+    .btn-delete:hover {
+      background: #d32f2f;
+      box-shadow: 0 4px 12px rgba(244, 67, 54, 0.3);
+    }
+    
+    .btn-delete:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+    
+    .message {
+      padding: 16px;
+      border-radius: 8px;
+      margin-bottom: 24px;
+      font-size: 14px;
+      display: none;
+    }
+    
+    .message.show {
+      display: block;
+    }
+    
+    .message.success {
+      background: #e8f5e9;
+      color: #2e7d32;
+    }
+    
+    .message.error {
+      background: #ffebee;
+      color: #c62828;
+    }
+    
+    .loading {
+      text-align: center;
+      padding: 40px;
+      color: #666;
+    }
+    
+    .loading-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(255, 255, 255, 0.9);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+    }
+    
+    .loading-content {
+      text-align: center;
+    }
+    
+    .loading-spinner {
+      width: 48px;
+      height: 48px;
+      border: 4px solid #e0e0e0;
+      border-top-color: #00BCD4;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 16px;
+    }
+    
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    
+    .loading-text {
+      font-size: 16px;
+      color: #666;
+      font-weight: 600;
+    }
+    
+    @media (max-width: 768px) {
+      .datetime-grid {
+        grid-template-columns: 1fr;
+      }
+      
+      .file-select-group {
+        flex-direction: column;
+      }
+      
+      .form-select {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="loadingOverlay" class="loading-overlay" style="display: none;">
+    <div class="loading-content">
+      <div class="loading-spinner"></div>
+      <div class="loading-text">読み込み中...</div>
+    </div>
+  </div>
+  
+  <div class="editor-container">
+    <div class="editor-header">
+      <div class="header-title">
+      <img 
+        src="https://githatake.github.io/SRC_web.io/SRC_SNS4.png" 
+        alt="ロゴ" 
+        class="header-logo"
+      >
+      <div class="header-text">
+        <div class="header-text">
+          <h1>静岡ローバース会議</h1>
+          <p>JSON編集システム</p>
+        </div>
+      </div>
+      <button class="btn-logout" onclick="handleLogout()">ログアウト</button>
+    </div>
+    
+    <div class="editor-content">
+      <div id="message" class="message"></div>
+      
+      <div class="file-selector">
+        <h2 class="file-selector-title">編集するファイルを選択</h2>
+        <div class="file-select-group">
+          <select id="fileSelect" class="form-select" onchange="handleFileSelect()">
+            <option value="">ファイルを選択してください...</option>
+          </select>
+          <button class="btn-new" onclick="handleNewFile()">新規作成</button>
+        </div>
+      </div>
+      
+      <div id="editorForm" class="editor-form">
+        <h2 class="form-title" id="formTitle">イベント情報を編集</h2>
+        
+        <form id="jsonForm" onsubmit="handleSave(event)">
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label required" for="title">タイトル</label>
+              <input 
+                type="text" 
+                id="title" 
+                class="form-input" 
+                placeholder="イベントのタイトルを入力"
+                required
+              >
+            </div>
+            
+            <div class="form-group">
+              <label class="form-label required" for="description">説明</label>
+              <textarea 
+                id="description" 
+                class="form-textarea" 
+                placeholder="イベントの詳細な説明を入力"
+                required
+              ></textarea>
+            </div>
+            
+            <div class="datetime-grid">
+              <div class="form-group">
+                <label class="form-label required" for="startTime">開始日時</label>
+                <input 
+                  type="datetime-local" 
+                  id="startTime" 
+                  class="form-input"
+                  required
+                >
+              </div>
+              
+              <div class="form-group">
+                <label class="form-label required" for="endTime">終了日時</label>
+                <input 
+                  type="datetime-local" 
+                  id="endTime" 
+                  class="form-input"
+                  required
+                >
+              </div>
+            </div>
+            
+            <div class="form-group">
+              <label class="form-label required" for="location">場所</label>
+              <input 
+                type="text" 
+                id="location" 
+                class="form-input" 
+                placeholder="開催場所を入力"
+                required
+              >
+            </div>
+            
+            <div class="datetime-grid">
+              <div class="form-group">
+                <label class="form-label required" for="category">カテゴリ</label>
+                <select id="category" class="form-select" required>
+                  <option value="">選択してください</option>
+                  <option value="プロジェクト">プロジェクト</option>
+                  <option value="議事録">議事録</option>
+                  <option value="その他">その他</option>
+                </select>
+              </div>
+              
+              <div class="form-group">
+                <label class="form-label" for="subCategory">サブカテゴリ</label>
+                <input 
+                  type="text" 
+                  id="subCategory" 
+                  class="form-input" 
+                  placeholder="例: 2025年度"
+                >
+              </div>
+            </div>
+            
+            <div class="form-group">
+              <label class="form-label">PDF情報</label>
+              <div class="pdf-info">
+                <div class="pdf-info-item">
+                  <span class="pdf-info-label">ファイルID:</span>
+                  <input 
+                    type="text" 
+                    id="pdfId" 
+                    class="form-input" 
+                    placeholder="GoogleドライブのファイルID"
+                    style="flex: 1; margin-left: 12px;"
+                  >
+                </div>
+                <div class="pdf-info-item">
+                  <span class="pdf-info-label">ファイル名:</span>
+                  <input 
+                    type="text" 
+                    id="pdfTitle" 
+                    class="form-input" 
+                    placeholder="PDFファイル名"
+                    style="flex: 1; margin-left: 12px;"
+                  >
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="form-actions">
+            <button type="submit" class="btn-save" id="saveBtn">
+              保存
+            </button>
+            <button type="button" class="btn-cancel" onclick="handleCancel()">
+              キャンセル
+            </button>
+            
+            <button 
+              type="button" 
+              class="btn-delete" 
+              id="deleteBtn" 
+              onclick="handleDelete()"
+              style="display: none;"
+            >
+              削除
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+  
+  <script>
+    let currentFileId = null;
+    let isNewFile = false;
+    
+    window.addEventListener('load', function() {
+      console.log('[v0] ページ読み込み開始');
+      console.log('[v0] URL:', window.location.href);
+      console.log('[v0] UserAgent:', navigator.userAgent);
+      
+      showLoading('ファイル一覧を読み込んでいます...');
+      
+      setTimeout(function() {
+        loadFileList();
+      }, 500);
+    });
+    
+    function showLoading(text) {
+      const overlay = document.getElementById('loadingOverlay');
+      const loadingText = overlay.querySelector('.loading-text');
+      loadingText.textContent = text || '読み込み中...';
+      overlay.style.display = 'flex';
+    }
+    
+    function hideLoading() {
+      const overlay = document.getElementById('loadingOverlay');
+      overlay.style.display = 'none';
+    }
+    
+    function loadFileList() {
+      console.log('[v0] ファイル一覧取得開始');
+      
+      const timeout = setTimeout(function() {
+        hideLoading();
+        showMessage('ファイル一覧の読み込みがタイムアウトしました（30秒）。\n\n考えられる原因：\n1. フォルダIDが設定されていない\n2. フォルダIDが間違っている\n3. フォルダへのアクセス権限がない\n\nブラウザのコンソール（F12）でエラーログを確認してください。', 'error');
+        console.log('[v0] タイムアウト発生');
+      }, 30000);
+      
+      google.script.run
+        .withSuccessHandler(function(result) {
+          clearTimeout(timeout);
+          hideLoading();
+          console.log('[v0] ファイル一覧取得成功:', result);
+          
+          if (result.success) {
+            const fileSelect = document.getElementById('fileSelect');
+            fileSelect.innerHTML = '<option value="">ファイルを選択してください...</option>';
+            
+            if (result.files && result.files.length > 0) {
+              result.files.forEach(function(file) {
+                const option = document.createElement('option');
+                option.value = file.id;
+                option.textContent = file.name + ' (更新: ' + new Date(file.lastModified).toLocaleString('ja-JP') + ')';
+                fileSelect.appendChild(option);
+              });
+              console.log('[v0] ' + result.files.length + '個のファイルを読み込みました');
+              showMessage(result.files.length + '個のJSONファイルが見つかりました', 'success');
+            } else {
+              showMessage('JSONファイルが見つかりませんでした。', 'error');
+              console.log('[v0] ファイルが見つかりません');
+            }
+          } else {
+            const errorMsg = result.message || 'JSONファイルの取得に失敗しました';
+            showMessage(errorMsg, 'error');
+            console.log('[v0] エラー:', errorMsg);
+            
+            // エラーメッセージをアラートでも表示
+            alert('エラー詳細:\n\n' + errorMsg);
+          }
+        })
+        .withFailureHandler(function(error) {
+          clearTimeout(timeout);
+          hideLoading();
+          console.log('[v0] ファイル一覧取得失敗:', error);
+          const errorMsg = 'ファイル一覧の取得に失敗しました\n\nエラー: ' + error.message;
+          showMessage(errorMsg, 'error');
+          alert('エラー詳細:\n\n' + errorMsg + '\n\nブラウザのコンソール（F12）で詳細を確認してください。');
+        })
+        .getJsonFiles();
+    }
+    
+    function handleFileSelect() {
+      const fileSelect = document.getElementById('fileSelect');
+      const fileId = fileSelect.value;
+      const deleteBtn = document.getElementById('deleteBtn'); // 削除ボタンを取得
+      
+      if (!fileId) {
+        document.getElementById('editorForm').classList.remove('show');
+        deleteBtn.style.display = 'none'; // ▼ 追加 (非表示)
+        return;
+      }
+      
+      currentFileId = fileId;
+      isNewFile = false;
+      
+      showLoading('ファイルを読み込んでいます...');
+      console.log('[v0] ファイル読み込み開始:', fileId);
+      
+      google.script.run
+        .withSuccessHandler(function(result) {
+          hideLoading();
+          console.log('[v0] ファイル読み込み成功:', result);
+          
+          if (result.success) {
+            loadJsonToForm(result.data);
+            document.getElementById('formTitle').textContent = result.fileName + ' を編集';
+            document.getElementById('editorForm').classList.add('show');
+            deleteBtn.style.display = 'block'; // ▼ 追加 (表示)
+          } else {
+            showMessage(result.message, 'error');
+            deleteBtn.style.display = 'none'; // ▼ 追加 (エラー時非表示)
+          }
+        })
+        .withFailureHandler(function(error) {
+          hideLoading();
+          console.log('[v0] ファイル読み込み失敗:', error);
+          showMessage('ファイルの読み込みに失敗しました: ' + error.message, 'error');
+        })
+        .getJsonContent(fileId);
+    }
+    
+    function loadJsonToForm(data) {
+      document.getElementById('title').value = data.title || '';
+      document.getElementById('description').value = data.description || '';
+      document.getElementById('startTime').value = formatDateTimeForInput(data.startTime);
+      document.getElementById('endTime').value = formatDateTimeForInput(data.endTime);
+      document.getElementById('location').value = data.location || '';
+      document.getElementById('category').value = data.category || '';
+      document.getElementById('subCategory').value = data.subCategory || '';
+      
+      if (data.sourcePdf) {
+        document.getElementById('pdfId').value = data.sourcePdf.id || '';
+        document.getElementById('pdfTitle').value = data.sourcePdf.title || '';
+      } else {
+        document.getElementById('pdfId').value = '';
+        document.getElementById('pdfTitle').value = '';
+      }
+    }
+    
+    function formatDateTimeForInput(isoString) {
+      if (!isoString) return '';
+      return isoString.substring(0, 16);
+    }
+    
+    function handleNewFile() {
+      isNewFile = true;
+      currentFileId = null;
+      
+      document.getElementById('jsonForm').reset();
+      document.getElementById('formTitle').textContent = '新規イベントを作成';
+      document.getElementById('editorForm').classList.add('show');
+      document.getElementById('fileSelect').value = '';
+      document.getElementById('deleteBtn').style.display = 'none'; // ▼ 追加 (新規作成時は非表示)
+    }
+    
+    function handleSave(event) {
+      event.preventDefault();
+      
+      const saveBtn = document.getElementById('saveBtn');
+      saveBtn.disabled = true;
+      saveBtn.textContent = '保存中...';
+      
+      console.log('[v0] 保存処理開始');
+      
+      const jsonData = {
+        title: document.getElementById('title').value,
+        description: document.getElementById('description').value,
+        startTime: document.getElementById('startTime').value + ':00',
+        endTime: document.getElementById('endTime').value + ':00',
+        location: document.getElementById('location').value,
+        category: document.getElementById('category').value,
+        subCategory: document.getElementById('subCategory').value,
+        sourcePdf: {
+          id: document.getElementById('pdfId').value,
+          title: document.getElementById('pdfTitle').value,
+          link: document.getElementById('pdfId').value 
+            ? 'https://drive.google.com/file/d/' + document.getElementById('pdfId').value + '/view?usp=drivesdk'
+            : ''
+        }
+      };
+      
+      console.log('[v0] 保存データ:', jsonData);
+      
+      if (isNewFile) {
+        const fileName = prompt('ファイル名を入力してください（.jsonは自動で追加されます）:');
+        if (!fileName) {
+          saveBtn.disabled = false;
+          saveBtn.textContent = '保存';
+          return;
+        }
+        
+        google.script.run
+          .withSuccessHandler(function(result) {
+            console.log('[v0] 新規ファイル作成結果:', result);
+            if (result.success) {
+              showMessage(result.message, 'success');
+              loadFileList();
+              isNewFile = false;
+              currentFileId = result.fileId;
+              document.getElementById('formTitle').textContent = result.fileName + ' を編集';
+            } else {
+              showMessage(result.message, 'error');
+            }
+            saveBtn.disabled = false;
+            saveBtn.textContent = '保存';
+          })
+          .withFailureHandler(function(error) {
+            console.log('[v0] 新規ファイル作成失敗:', error);
+            showMessage('保存に失敗しました: ' + error.message, 'error');
+            saveBtn.disabled = false;
+            saveBtn.textContent = '保存';
+          })
+          .createNewJsonFile(fileName, jsonData);
+      } else {
+        google.script.run
+          .withSuccessHandler(function(result) {
+            console.log('[v0] ファイル保存結果:', result);
+            if (result.success) {
+              showMessage(result.message, 'success');
+              loadFileList();
+            } else {
+              showMessage(result.message, 'error');
+            }
+            saveBtn.disabled = false;
+            saveBtn.textContent = '保存';
+          })
+          .withFailureHandler(function(error) {
+            console.log('[v0] ファイル保存失敗:', error);
+            showMessage('保存に失敗しました: ' + error.message, 'error');
+            saveBtn.disabled = false;
+            saveBtn.textContent = '保存';
+          })
+          .saveJsonContent(currentFileId, jsonData);
+      }
+    }
+    
+    function handleCancel(force = false) {
+      if (force || confirm('編集内容を破棄しますか？')) {
+        document.getElementById('editorForm').classList.remove('show');
+        document.getElementById('fileSelect').value = '';
+        document.getElementById('jsonForm').reset();
+        currentFileId = null;
+        isNewFile = false;
+        document.getElementById('deleteBtn').style.display = 'none'; 
+      }
+    }
+
+    /**
+     * ファイル削除処理
+     */
+    function handleDelete() {
+      // 新規ファイル作成中やIDがない場合は何もしない
+      if (isNewFile || !currentFileId) {
+        showMessage('削除できるファイルが選択されていません。', 'error');
+        return;
+      }
+      
+      // 選択中のファイル名を取得して確認メッセージに表示
+      const fileSelect = document.getElementById('fileSelect');
+      const selectedOption = fileSelect.options[fileSelect.selectedIndex];
+      const fileName = selectedOption ? selectedOption.text.split(' (更新:')[0] : '選択中のファイル';
+      
+      if (!confirm('本当にファイルを削除しますか？\n\nファイル名: ' + fileName + '\n\n（ファイルはGoogleドライブのゴミ箱に移動します）')) {
+        return;
+      }
+      
+      showLoading('ファイルを削除しています...');
+      const deleteBtn = document.getElementById('deleteBtn');
+      deleteBtn.disabled = true;
+
+      console.log('[v0] ファイル削除開始:', currentFileId);
+
+      google.script.run
+        .withSuccessHandler(function(result) {
+          hideLoading();
+          deleteBtn.disabled = false;
+          console.log('[v0] ファイル削除結果:', result);
+
+          if (result.success) {
+            showMessage(result.message, 'success');
+            // フォームを非表示にし、リセットする
+            handleCancel(true); // 確認なしでキャンセル処理を実行
+            loadFileList(); // ファイルリストを再読み込み
+          } else {
+            showMessage(result.message, 'error');
+          }
+        })
+        .withFailureHandler(function(error) {
+          hideLoading();
+          deleteBtn.disabled = false;
+          console.log('[v0] ファイル削除失敗:', error);
+          showMessage('削除に失敗しました: ' + error.message, 'error');
+        })
+        .deleteJsonFile(currentFileId);
+    }
+    
+    function handleLogout() {
+      if (confirm('ログアウトしますか？')) {
+        google.script.run
+          .withSuccessHandler(function() {
+            window.location.reload();
+          })
+          .logout();
+      }
+    }
+    
+    function showMessage(text, type) {
+      const message = document.getElementById('message');
+      message.textContent = text;
+      message.className = 'message show ' + type;
+      
+      if (type !== 'error') {
+        setTimeout(function() {
+          message.classList.remove('show');
+        }, 5000);
+      }
+      
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  </script>
+</body>
+</html>

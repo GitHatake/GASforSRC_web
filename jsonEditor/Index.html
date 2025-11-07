@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SRC JSON編集 - ログイン</title>
+  <?!= include('Stylesheet'); ?>
+  <style>
+    .login-container {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    
+    .login-card {
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+      padding: 40px;
+      max-width: 400px;
+      width: 100%;
+    }
+    
+    .login-header {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+    
+    .login-logo {
+      width: 80px;  /* ロゴの幅 */
+      height: 80px; /* ロゴの高さ */
+      margin: 0 auto 16px;
+      
+      /* 画像が80x80のボックス内に歪まず収まるようにします */
+      object-fit: contain; 
+      
+      /* もしロゴを円形に切り抜きたい場合は、以下の1行を有効にしてください */
+      border-radius: 50%;
+    }
+    
+    .login-title {
+      font-size: 24px;
+      font-weight: bold;
+      color: #333;
+      margin-bottom: 8px;
+    }
+    
+    .login-subtitle {
+      font-size: 14px;
+      color: #666;
+    }
+    
+    .form-group {
+      margin-bottom: 24px;
+    }
+    
+    .form-label {
+      display: block;
+      font-size: 14px;
+      font-weight: 600;
+      color: #333;
+      margin-bottom: 8px;
+    }
+    
+    .form-input {
+      width: 100%;
+      padding: 12px 16px;
+      border: 2px solid #e0e0e0;
+      border-radius: 8px;
+      font-size: 16px;
+      transition: all 0.3s ease;
+      box-sizing: border-box;
+    }
+    
+    .form-input:focus {
+      outline: none;
+      border-color: #00BCD4;
+      box-shadow: 0 0 0 3px rgba(0, 188, 212, 0.1);
+    }
+    
+    .btn-login {
+      width: 100%;
+      padding: 14px;
+      background: linear-gradient(135deg, #00BCD4, #4CAF50);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+    
+    .btn-login:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 188, 212, 0.3);
+    }
+    
+    .btn-login:active {
+      transform: translateY(0);
+    }
+    
+    .btn-login:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+    
+    .error-message {
+      background: #ffebee;
+      color: #c62828;
+      padding: 12px 16px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      font-size: 14px;
+      display: none;
+    }
+    
+    .error-message.show {
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <div class="login-container">
+    <div class="login-card">
+      <div class="login-header">
+        <img 
+          src="https://githatake.github.io/SRC_web.io/SRC_SNS4.png" 
+          alt="静岡ローバース会議 ロゴ" 
+          class="login-logo"
+        >
+        <h1 class="login-title">静岡ローバース会議</h1>
+        <p class="login-subtitle">JSON編集システム</p>
+      </div>
+      
+      <div id="errorMessage" class="error-message"></div>
+      
+      <form id="loginForm" onsubmit="handleLogin(event)">
+        <div class="form-group">
+          <label class="form-label" for="password">パスワード</label>
+          <input 
+            type="password" 
+            id="password" 
+            class="form-input" 
+            placeholder="パスワードを入力してください"
+            required
+            autocomplete="current-password"
+          >
+        </div>
+        
+        <button type="submit" class="btn-login" id="loginBtn">
+          ログイン
+        </button>
+      </form>
+    </div>
+  </div>
+  
+  <script>
+    function handleLogin(event) {
+      event.preventDefault();
+      
+      const password = document.getElementById('password').value;
+      const loginBtn = document.getElementById('loginBtn');
+      const errorMessage = document.getElementById('errorMessage');
+      
+      // ボタンを無効化
+      loginBtn.disabled = true;
+      loginBtn.textContent = 'ログイン中...';
+      errorMessage.classList.remove('show');
+      
+      console.log('[v0] ログイン処理開始');
+      
+      google.script.run
+        .withSuccessHandler(function(result) {
+          console.log('[v0] ログイン結果:', result);
+          
+          if (result.success) {
+            loginBtn.textContent = 'ログイン成功！リダイレクト中...';
+            console.log('[v0] 1.5秒待機してからリロード');
+            
+            setTimeout(function() {
+              console.log('[v0] リロード実行');
+              window.location.href = window.location.href.split('?')[0] + '?t=' + new Date().getTime();
+            }, 1500);
+          } else {
+            // ログイン失敗
+            console.log('[v0] ログイン失敗:', result.message);
+            errorMessage.textContent = result.message;
+            errorMessage.classList.add('show');
+            loginBtn.disabled = false;
+            loginBtn.textContent = 'ログイン';
+            document.getElementById('password').value = '';
+            document.getElementById('password').focus();
+          }
+        })
+        .withFailureHandler(function(error) {
+          console.log('[v0] ログインエラー:', error);
+          errorMessage.textContent = 'エラーが発生しました: ' + error.message;
+          errorMessage.classList.add('show');
+          loginBtn.disabled = false;
+          loginBtn.textContent = 'ログイン';
+        })
+        .verifyPassword(password);
+    }
+  </script>
+</body>
+</html>

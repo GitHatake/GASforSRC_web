@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>プロジェクトポータル</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Interフォントの読み込み（オプション） */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* カスタムローディングスピナー */
+        .loader {
+            border-top-color: #3498db;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 p-4 md:p-8">
+
+    <div class="max-w-7xl mx-auto">
+        <header class="mb-8">
+            <h1 class="text-3xl font-bold text-gray-900">プロジェクトポータル</h1>
+            <p class="text-gray-600 mt-2">進行中および過去のプロジェクト一覧</p>
+        </header>
+
+        <!-- ローディング・エラー表示 -->
+        <div id="loading-indicator" class="flex justify-center items-center h-64">
+            <div class="loader ease-linear rounded-full border-8 border-t-8 border-gray-200 h-32 w-32"></div>
+        </div>
+
+        <div id="error-message" class="hidden bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg relative mb-6" role="alert">
+            <strong class="font-bold">エラー:</strong>
+            <span class="block sm:inline">プロジェクトの読み込みに失敗しました。時間をおいて再試行してください。</span>
+        </div>
+
+        <!-- プロジェクトカードコンテナ -->
+        <div id="project-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <!-- カードはJavaScriptによってここに挿入されます -->
+        </div>
+    </div>
+
+    <script>
+        // --- 設定項目 ---
+        // 1. GASをWebアプリとしてデプロイして取得したURLをここに設定してください
+        const GAS_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbyDHWudw4Bq1tfCoxE1r1sv669iDzS5WwAnimTFgk1vt8uaGUtRB4FVGvh4ujQGYqKSLA/exec'; // ★★★ 要変更 ★★★
+
+        // 2. プロジェクトを自動更新する間隔（ミリ秒）
+        const UPDATE_INTERVAL = 300000; // (5分)
+        // --- 設定項目ここまで ---
+
+
+        const projectContainer = document.getElementById('project-container');
+        const loadingIndicator = document.getElementById('loading-indicator');
+        const errorMessage = document.getElementById('error-message');
+
+        /**
+         * プロジェクトデータをGASから非同期で取得する
+         */
+        async function fetchProjects() {
+            console.log('Fetching projects...');
+            if (GAS_WEB_APP_URL === 'YOUR_GAS_WEB_APP_URL_HERE') {
+                console.error('GAS_WEB_APP_URLが設定されていません。');
+                showError('GASのURLが設定されていません。index.htmlを編集してください。');
+                loadingIndicator.classList.add('hidden');
+                return;
+            }
+
+            try {
+                const response = await fetch(GAS_WEB_APP_URL);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const projects = await response.json();
+                
+                // GAS側でエラーが設定された場合
+                if (Array.isArray(projects) && projects.length > 0 && projects[0].error) {
+                    throw new Error(projects[0].error);
+                }
+
+                // 読み込み成功
+                renderProjects(projects);
+                loadingIndicator.classList.add('hidden');
+                errorMessage.classList.add('hidden');
+
+            } catch (error) {
+                console.error('Failed to fetch projects:', error);
+                showError(error.message || 'プロジェクトの読み込みに失敗しました。');
+                loadingIndicator.classList.add('hidden');
+            }
+        }
+
+        /**
+         * 取得したプロジェクトデータ（JSON配列）を基にカードを生成して表示する
+         * @param {Array} projects - プロジェクトオブジェクトの配列
+         */
+        function renderProjects(projects) {
+            // コンテナをクリア
+            projectContainer.innerHTML = '';
+
+            if (!projects || projects.length === 0) {
+                projectContainer.innerHTML = '<p class="text-gray-600 col-span-full text-center">表示するプロジェクトがありません。</p>';
+                return;
+            }
+
+            projects.forEach(project => {
+                const card = document.createElement('div');
+                card.className = 'bg-white rounded-lg shadow-lg overflow-hidden flex flex-col';
+
+                // --- 日付とステータスの処理 ---
+                const now = new Date();
+                const startTime = project.startTime ? new Date(project.startTime) : null;
+                const endTime = project.endTime ? new Date(project.endTime) : null;
+                
+                let status = '日付未定';
+                let statusColor = 'bg-gray-100 text-gray-800';
+
+                if (endTime) {
+                    if (endTime < now) {
+                        status = '完了';
+                        statusColor = 'bg-green-100 text-green-800';
+                    } else if (startTime && startTime <= now) {
+                        status = '進行中';
+                        statusColor = 'bg-yellow-100 text-yellow-800';
+                    } else {
+                        status = '開催予定';
+                        statusColor = 'bg-blue-100 text-blue-800';
+                    }
+                } else if (startTime) {
+                    status = '進行中'; // 終了日未定の場合
+                    statusColor = 'bg-yellow-100 text-yellow-800';
+                }
+                
+                // 日付のフォーマット
+                const formattedStartDate = startTime ? formatDateTime(startTime) : '未定';
+                const formattedEndDate = endTime ? formatDateTime(endTime) : '未定';
+                const dateRange = (startTime || endTime) ? `${formattedStartDate} 〜<br>${formattedEndDate}` : '期間未定';
+
+                // PDFリンクの生成
+                let pdfLink = '';
+                if (project.sourcePdf && project.sourcePdf.link) {
+                    pdfLink = `
+                    <a href="${escapeHTML(project.sourcePdf.link)}" 
+                       target="_blank" rel="noopener noreferrer" 
+                       class="inline-block bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium py-2 px-4 rounded-lg transition-colors duration-200">
+                        企画書PDFを開く
+                    </a>`;
+                }
+                
+                // 場所の表示
+                let locationInfo = '';
+                if (project.location) {
+                    locationInfo = `
+                    <div class="mt-4 pt-4 border-t border-gray-200">
+                        <h4 class="text-xs font-semibold text-gray-500 uppercase mb-1">場所</h4>
+                        <p class="text-gray-700 text-sm">${escapeHTML(project.location)}</p>
+                    </div>`;
+                }
+
+                card.innerHTML = `
+                    <div class="p-6 flex-grow">
+                        <!-- ステータスバッジ -->
+                        <span class="px-3 py-1 ${statusColor} rounded-full font-medium text-xs float-right">${escapeHTML(status)}</span>
+                        
+                        <!-- タイトル -->
+                        <h2 class="text-xl font-bold text-gray-900 mb-2 clear-right">${escapeHTML(project.title || '無題のプロジェクト')}</h2>
+                        
+                        <!-- 概要 -->
+                        <p class="text-gray-600 text-sm mb-4 h-24 overflow-y-auto">
+                            ${escapeHTML(project.description || '概要がありません。')}
+                        </p>
+                        
+                        <!-- 日時 -->
+                        <div class="mt-4">
+                            <h4 class="text-xs font-semibold text-gray-500 uppercase mb-1">日時</h4>
+                            <p class="text-gray-700 text-sm">${dateRange}</p> <!-- <br> を許可 -->
+                        </div>
+                        
+                        <!-- 場所 -->
+                        ${locationInfo}
+                    </div>
+                    
+                    <!-- フッター (リンク) -->
+                    ${pdfLink ? `
+                    <div class="p-6 bg-gray-50 border-t border-gray-100">
+                        ${pdfLink}
+                    </div>
+                    ` : ''}
+                `;
+                projectContainer.appendChild(card);
+            });
+        }
+
+        /**
+         * エラーメッセージを表示する
+         * @param {string} message - 表示するメッセージ
+         */
+        function showError(message) {
+            errorMessage.querySelector('span').textContent = message;
+            errorMessage.classList.remove('hidden');
+        }
+
+        /**
+         * ISO形式の日付文字列を YYYY/MM/DD HH:mm 形式に変換する
+         * @param {Date} dateObj - Dateオブジェクト
+         * @returns {string} - フォーマットされた日付文字列
+         */
+        function formatDateTime(dateObj) {
+            if (!dateObj || isNaN(dateObj)) return '日付無効';
+            
+            const Y = dateObj.getFullYear();
+            const M = String(dateObj.getMonth() + 1).padStart(2, '0');
+            const D = String(dateObj.getDate()).padStart(2, '0');
+            const h = String(dateObj.getHours()).padStart(2, '0');
+            const m = String(dateObj.getMinutes()).padStart(2, '0');
+            
+            return `${Y}/${M}/${D} ${h}:${m}`;
+        }
+
+        /**
+         * HTMLエスケープ（簡易的なXSS対策）
+         * @param {string} str - エスケープする文字列
+         */
+        function escapeHTML(str) {
+            if (typeof str !== 'string') return '';
+            return str.replace(/[&<>"']/g, function(match) {
+                return {
+                    '&': '&amp;',
+                    '<': '&lt;',
+                    '>': '&gt;',
+                    '"': '&quot;',
+                    "'": '&#39;'
+                }[match];
+            });
+        }
+
+        // --- 初期実行 ---
+        document.addEventListener('DOMContentLoaded', fetchProjects);
+
+        // 設定された間隔で自動更新
+        if (UPDATE_INTERVAL > 0) {
+            setInterval(fetchProjects, UPDATE_INTERVAL);
+        }
+
+    </script>
+</body>
+</html>
+
