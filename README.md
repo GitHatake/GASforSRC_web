@@ -1,6 +1,6 @@
 # SRC_web GAS Projects
 
-このリポジトリは、`SRC_web`を機能をサポートするためのGoogle Apps Script (GAS) プロジェクト群です。
+このリポジトリは、`SRC_web`の機能をサポートするためのGoogle Apps Script (GAS) プロジェクト群です。
 
 ## プロジェクト概要
 
